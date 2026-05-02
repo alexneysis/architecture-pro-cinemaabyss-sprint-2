@@ -1,0 +1,23 @@
+@startuml to be c4 container
+
+!include  https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+
+Person(user, "User")
+System_Boundary(movie_app, "Movie app") {
+    Container(proxy, "Proxy", "Python")
+    Container(web_app, "Monolith", "Go")
+    Container(events_app, "Event collector", "Python")
+    Container(movies, "Movies", "Go")
+    ContainerDb(pg, "Database", "PostgreSQL", "Store data")
+    SystemQueue(kafka, "Kafka")
+}
+
+Rel(user, proxy, "Uses", "HTTPS")
+Rel(proxy, web_app, "Forward", "HTTPS")
+Rel(proxy, movies, "Forward", "HTTPS")
+Rel(proxy, events_app, "Forward", "HTTPS")
+Rel(web_app, pg, "")
+Rel(movies, pg, "")
+BiRel(events_app, kafka,"")
+@enduml
