@@ -1,17 +1,15 @@
 import os
-from fastapi import FastAPI, HTTPException, Path, Request, status
-from database import lifespan
-from models import MessageResponse, SensorCreate, Sensor
 import random
 
-class Settings(BaseSettings):
-    MONOLITH_URL: str
-    MOVIES_SERVICE_URL: str
-    EVENTS_SERVICE_URL: str
-    GRADUAL_MIGRATION: bool
-    MOVIES_MIGRATION_PERCENT: int
+import httpx
+from fastapi import FastAPI, Request
+from starlette.responses import JSONResponse, Response
 
-settings = Settings()
+MONOLITH_URL = os.getenv("MONOLITH_URL")
+MOVIES_SERVICE_URL = os.getenv("MOVIES_SERVICE_URL")
+EVENTS_SERVICE_URL = os.getenv("EVENTS_SERVICE_URL")
+GRADUAL_MIGRATION = True if os.getenv("GRADUAL_MIGRATION") in ("true", "True", 1, "1") else False
+MOVIES_MIGRATION_PERCENT = int(os.getenv("MOVIES_MIGRATION_PERCENT"))
 
 app = FastAPI(
     title="CinemaAbyss Proxy",
@@ -56,24 +54,33 @@ async def _forward(request: Request, upstream_host: str, upstream_path: str) -> 
 async def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
+
 @app.api_route("/api/payments", methods=["GET", "POST"])
 async def proxy_payments(request: Request) -> Response:
-    return await _forward(request, settings.MONOLITH_API_HOST, "/api/payments")
+    return await _forward(request, MONOLITH_URL, "/api/payments")
+
+
+@app.api_route("/api/users", methods=["GET", "POST"])
+async def proxy_users(request: Request) -> Response:
+    return await _forward(request, MONOLITH_URL, "/api/users")
 
 
 @app.api_route("/api/subscriptions", methods=["GET", "POST"])
 async def proxy_subscriptions(request: Request) -> Response:
-    return await _forward(request, settings.MONOLITH_API_HOST, "/api/subscriptions")
+    return await _forward(request, MONOLITH_URL, "/api/subscriptions")
 
 
 @app.api_route("/api/movies", methods=["GET", "POST"])
 async def proxy_movies(request: Request) -> Response:
-    if not settings.GRADUAL_MIGRATION:
-        return await _forward(request, settings.MONOLITH_API_HOST, "/api/movies")
+    if not GRADUAL_MIGRATION:
+        print("Proxy to monolith")
+        return await _forward(request, MONOLITH_URL, "/api/movies")
 
-    use_movies_service = settings.MOVIES_MIGRATION_PERCENT == 100
+    use_movies_service = MOVIES_MIGRATION_PERCENT == 100
     if not use_movies_service:
-        use_movies_service = random.randint(1, 100) <= settings.MOVIES_MIGRATION_PERCENT
+        use_movies_service = random.randint(1, 100) <= MOVIES_MIGRATION_PERCENT
 
-    target_host = settings.MOVIES_API_HOST if use_movies_service else settings.MONOLITH_API_HOST
+    target_host = MOVIES_SERVICE_URL if use_movies_service else MONOLITH_URL
+    if not use_movies_service:
+        print("Proxy to monolith")
     return await _forward(request, target_host, "/api/movies")
