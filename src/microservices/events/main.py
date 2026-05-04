@@ -34,8 +34,8 @@ app = FastAPI(
 
 
 @app.get("/api/events/health")
-async def healthcheck() -> dict[str, str]:
-    return {"status": "ok"}
+async def healthcheck() -> dict[str, bool]:
+    return {"status": True}
 
 
 @app.post("/api/events/movie", status_code=status.HTTP_201_CREATED)
@@ -54,7 +54,7 @@ async def create_movie_event(movie_event: MovieEvent) -> EventResponse:
     )
 
 
-@app.post("/api/events/user")
+@app.post("/api/events/user", status_code=status.HTTP_201_CREATED)
 async def create_user_event(user_event: UserEvent) -> EventResponse:
     result = await broker.publish(message=user_event.model_dump(), topic=TopicName.USERS)
     return EventResponse(
@@ -70,7 +70,7 @@ async def create_user_event(user_event: UserEvent) -> EventResponse:
     )
 
 
-@app.post("/api/events/payment")
+@app.post("/api/events/payment", status_code=status.HTTP_201_CREATED)
 async def create_payment_event(payment_event: PaymentEvent) -> EventResponse:
     result = await broker.publish(message=payment_event.model_dump(), topic=TopicName.PAYMENTS)
     return EventResponse(
