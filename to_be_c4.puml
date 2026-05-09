@@ -1,0 +1,32 @@
+@startuml to be c4 container
+
+!include  https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+
+Person(user, "User")
+Person(admin, "Admin")
+System_Boundary(movie_app, "Movie app") {
+    Container(auth_service, "Auth", "Go")
+    Container(ugc_service, "UGC API", "Go")
+    Container(notification_service, "Notification service", "Go")
+    Container(movie_service, "Movie API", "Go")
+    Container(stream_movie_service, "Stream movies", "Go")
+    ContainerDb(auth_db, "PostgreSQL", "PostgreSQL", "Store data")
+    ContainerDb(ugc_db, "Mongo", "Mongo", "Store UGC content")
+    ContainerDb(movie_pg, "Database", "PostgreSQL", "Store info about movie")
+    ContainerDb(s3, "S3", "", "Store movies in diff quality")
+    SystemQueue(broker, "Kafka")
+}
+
+Rel(admin, auth_service, "Update and save new data", "HTTPS")
+Rel(user, auth_service, "Uses", "HTTPS")
+Rel(auth_service, movie_service, "Forward", "HTTPS")
+Rel(auth_service, ugc_service, "Forward", "HTTPS")
+Rel(auth_service, stream_movie_service, "Forward", "HTTPS")
+Rel(auth_service, auth_db, "Uses")
+Rel(ugc_service, ugc_db, "")
+Rel(stream_movie_service, s3, "")
+Rel(stream_movie_service, movie_pg, "")
+Rel(movie_service, broker,"")
+BiRel(broker, notification_service,"")
+@enduml
